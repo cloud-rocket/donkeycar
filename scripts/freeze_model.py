@@ -24,8 +24,15 @@ output_meta = Path('%s/%s.metadata' % (output_path.parent.as_posix(), output_pat
 tf.keras.backend.clear_session()
 tf.keras.backend.set_learning_phase(0)
 
+if tf.__version__ >= '2.0.0':
+    tf.compat.v1.disable_eager_execution()
+
 model = tf.keras.models.load_model(in_model, compile=False)
-session = tf.keras.backend.get_session()
+
+if tf.__version__ >= '2.0.0':
+    session = tf.keras.backend.get_session()
+else:
+    session = tf.compat.v1.keras.backend.get_session()
 
 input_names = sorted([layer.op.name for layer in model.inputs])
 output_names = sorted([layer.op.name for layer in model.outputs])
