@@ -30,9 +30,9 @@ if tf.__version__ >= '2.0.0':
 model = tf.keras.models.load_model(in_model, compile=False)
 
 if tf.__version__ >= '2.0.0':
-    session = tf.keras.backend.get_session()
-else:
     session = tf.compat.v1.keras.backend.get_session()
+else:
+    session = tf.keras.backend.get_session()
 
 input_names = sorted([layer.op.name for layer in model.inputs])
 output_names = sorted([layer.op.name for layer in model.outputs])
