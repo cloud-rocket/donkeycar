@@ -31,12 +31,18 @@ class TensorRTLinear(KerasPilot):
 
     def load(self, model_path):
         uff_model = Path(model_path)
+<<<<<<< HEAD
         metadata_path = Path('%s/%s.metadata'
                              % (uff_model.parent.as_posix(), uff_model.stem))
         with open(metadata_path.as_posix(), 'r') as metadata, \
                 trt.Builder(self.logger) as builder, \
                 builder.create_network() as network, \
                 trt.UffParser() as parser:
+=======
+        metadata_path = Path('%s/%s.metadata' % (uff_model.parent.as_posix(), uff_model.stem))
+        # with open(metadata_path.as_posix(), 'r') as metadata, trt.Builder(self.logger) as builder, builder.create_network() as network, trt.UffParser() as parser:
+        with open(metadata_path.as_posix(), 'r') as metadata, trt.Builder(self.logger) as builder, builder.create_network() as network, trt.OnnxParser() as parser:
+>>>>>>> e010c58... chg: tensorrt ts2 WIP
 
             builder.max_workspace_size = 1 << 20
             builder.max_batch_size = 1
@@ -74,7 +80,7 @@ class TensorRTLinear(KerasPilot):
         image_input = self.inputs[0] 
         np.copyto(image_input.host_memory, image)
         with self.engine.create_execution_context() as context:
-            inference_output = TensorRTLinear.infer(context=context,
+            inference_output = TensorRTLinear.inference(context=context,
                                                     bindings=self.bindings,
                                                     inputs=self.inputs,
                                                     outputs=self.outputs,
@@ -108,7 +114,7 @@ class TensorRTLinear(KerasPilot):
         return inputs, outputs, bindings, stream
 
     @classmethod
-    def infer(cls, context, bindings, inputs, outputs, stream, batch_size=1):
+    def inference(cls, context, bindings, inputs, outputs, stream, batch_size=1):
         # Transfer input data to the GPU.
         [cuda.memcpy_htod_async(inp.device_memory, inp.host_memory, stream)
          for inp in inputs]
