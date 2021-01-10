@@ -31,18 +31,16 @@ class TensorRTLinear(KerasPilot):
 
     def load(self, model_path):
         uff_model = Path(model_path)
-<<<<<<< HEAD
         metadata_path = Path('%s/%s.metadata'
                              % (uff_model.parent.as_posix(), uff_model.stem))
+        # with open(metadata_path.as_posix(), 'r') as metadata, \
+        #         trt.Builder(self.logger) as builder, \
+        #         builder.create_network() as network, \
+        #         trt.UffParser() as parser:
         with open(metadata_path.as_posix(), 'r') as metadata, \
                 trt.Builder(self.logger) as builder, \
                 builder.create_network() as network, \
-                trt.UffParser() as parser:
-=======
-        metadata_path = Path('%s/%s.metadata' % (uff_model.parent.as_posix(), uff_model.stem))
-        # with open(metadata_path.as_posix(), 'r') as metadata, trt.Builder(self.logger) as builder, builder.create_network() as network, trt.UffParser() as parser:
-        with open(metadata_path.as_posix(), 'r') as metadata, trt.Builder(self.logger) as builder, builder.create_network() as network, trt.OnnxParser() as parser:
->>>>>>> e010c58... chg: tensorrt ts2 WIP
+                trt.OnnxParser() as parser:
 
             builder.max_workspace_size = 1 << 20
             builder.max_batch_size = 1
