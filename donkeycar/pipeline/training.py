@@ -10,6 +10,7 @@ from donkeycar.pipeline.types import TubDataset
 from donkeycar.pipeline.augmentations import ImageAugmentation
 from donkeycar.utils import get_model_by_type, normalize_image
 import tensorflow as tf
+from tensorflow.python.compiler.tensorrt import trt_convert as trt
 import numpy as np
 
 
@@ -83,7 +84,8 @@ def train(cfg: Config, tub_paths: str, model: str, model_type: str) \
     """
     model_name, model_ext = os.path.splitext(model)
     is_tflite = model_ext == '.tflite'
-    if is_tflite:
+    is_trt = model_ext == '.trt'
+    if is_tflite or is_trt:
         model = f'{model_name}.h5'
 
     if not model_type:
@@ -128,5 +130,11 @@ def train(cfg: Config, tub_paths: str, model: str, model_type: str) \
     if is_tflite:
         tf_lite_model_path = f'{os.path.splitext(output_path)[0]}.tflite'
         keras_model_to_tflite(output_path, tf_lite_model_path)
+
+    if is_trt:
+        output_saved_model_dir = f'{os.path.splitext(output_path)[0]}.trt'
+        converter = trt.TrtGraphConverterV2(input_saved_model_dir=output_path)
+        converter.convert()
+        converter.save(output_saved_model_dir)
 
     return history
