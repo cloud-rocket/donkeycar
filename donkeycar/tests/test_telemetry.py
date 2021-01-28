@@ -11,6 +11,7 @@ from random import randint
 
 def test_mqtt_telemetry():
 
+    cfg.TELEMETRY_DEFAULT_INPUTS = 'pilot/angle,pilot/throttle'
     cfg.TELEMETRY_DONKEY_NAME = 'test{}'.format(randint(0, 1000))
     cfg.TELEMETRY_MQTT_JSON_ENABLE = True
 

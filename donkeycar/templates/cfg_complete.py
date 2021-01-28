@@ -199,7 +199,7 @@ TELEMETRY_PUBLISH_PERIOD = 1
 TELEMETRY_LOGGING_ENABLE = True
 TELEMETRY_LOGGING_LEVEL = 'INFO' # (Python logging level) 'NOTSET' / 'DEBUG' / 'INFO' / 'WARNING' / 'ERROR' / 'FATAL' / 'CRITICAL'
 TELEMETRY_LOGGING_FORMAT = '%(message)s'  # (Python logging format - https://docs.python.org/3/library/logging.html#formatter-objects
-TELEMETRY_DEFAULT_INPUTS = 'pilot/angle,pilot/throttle'
+TELEMETRY_DEFAULT_INPUTS = 'pilot/angle,pilot/throttle,recording'
 TELEMETRY_DEFAULT_TYPES = 'float,float'
 
 # PERF MONITOR
