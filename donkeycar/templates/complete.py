@@ -413,7 +413,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
 
         V.add(kl, inputs=inputs,
               outputs=outputs,
-              run_condition='run_pilot')
+              run_condition='run_pilot', threaded=cfg.AI_PILOT_THREADED)
     
     if cfg.STOP_SIGN_DETECTOR:
         from donkeycar.parts.object_detector.stop_sign_detector import StopSignDetector
