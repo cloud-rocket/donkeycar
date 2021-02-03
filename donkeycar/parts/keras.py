@@ -112,6 +112,7 @@ class KerasPilot(ABC):
             return self._last_output
 
     def update(self):
+        logger.debug("Starting Autopilot main thread...")
         while self._on:
             try:
                 next_input = self._input_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
