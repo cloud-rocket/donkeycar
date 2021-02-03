@@ -8,6 +8,8 @@ include one or more models to help direct the vehicles motion.
 
 """
 
+import queue
+import logging
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Dict, Any, Tuple, Optional, Union
@@ -28,7 +30,10 @@ from tensorflow.keras.backend import concatenate
 from tensorflow.keras.models import Model, Sequential
 from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 
+logger = logging.getLogger(__name__)
+
 ONE_BYTE_SCALE = 1.0 / 255.0
+MULTITHREADED_QUEUE_TIMEOUT = 0.3
 
 # type of x
 XY = Union[float, np.ndarray, Tuple[float, ...], Tuple[np.ndarray, ...]]
@@ -39,10 +44,14 @@ class KerasPilot(ABC):
     Base class for Keras models that will provide steering and throttle to
     guide a car.
     """
-    def __init__(self) -> None:
+    def __init__(self, max_concurrency=3) -> None:
         self.model: Optional[Model] = None
         self.optimizer = "adam"
-        print(f'Created {self}')
+        self._input_q = queue.Queue(max_concurrency)
+        self._output_q = queue.Queue(max_concurrency)
+        self._on = True
+        self._last_output = (0,0)
+        logger.info(f'Created {self}')
 
     def load(self, model_path: str) -> None:
         self.model = keras.models.load_model(model_path, compile=False)
@@ -86,6 +95,41 @@ class KerasPilot(ABC):
         """
         norm_arr = normalize_image(img_arr)
         return self.inference(norm_arr, other_arr)
+
+    def run_threaded(self, img_arr: np.ndarray, other_arr: np.ndarray = None) \
+            -> Tuple[Union[float, np.ndarray], ...]:
+
+        try:
+            self._input_q.put((img_arr, other_arr), block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+        except queue.Full:
+            logger.warn('input queue full - probably FPS too high')
+
+        try:
+            self._last_output = self._output_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+            return self._last_output
+        except queue.Empty:
+            # If nothing to return - return the last result again
+            return self._last_output
+
+    def update(self):
+        logger.debug("Starting Autopilot main thread...")
+        while self._on:
+            try:
+                next_input = self._input_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+            except queue.Empty:
+                continue
+            norm_arr = normalize_image(next_input[0])
+            output = self.inference(norm_arr, next_input[1])
+            try:
+                self._output_q.put(output, block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+            except queue.Full:
+                pass
+
+    def shutdown(self):
+        # indicate that the thread should be stopped
+        self._on = False
+        print('Stopping Keras Pilot')
+        time.sleep(.4)
 
     @abstractmethod
     def inference(self, img_arr: np.ndarray, other_arr: np.ndarray) \
