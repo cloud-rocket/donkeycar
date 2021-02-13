@@ -13,6 +13,7 @@ import logging
 from abc import ABC, abstractmethod
 import numpy as np
 from typing import Dict, Any, Tuple, Optional, Union
+import concurrent.futures
 import donkeycar as dk
 from donkeycar.utils import normalize_image, linear_bin
 from donkeycar.pipeline.types import TubRecord
@@ -39,6 +40,7 @@ MULTITHREADED_QUEUE_TIMEOUT = 0.3
 XY = Union[float, np.ndarray, Tuple[float, ...], Tuple[np.ndarray, ...]]
 
 
+
 class KerasPilot(ABC):
     """
     Base class for Keras models that will provide steering and throttle to
@@ -47,6 +49,7 @@ class KerasPilot(ABC):
     def __init__(self, max_concurrency=3) -> None:
         self.model: Optional[Model] = None
         self.optimizer = "adam"
+        self._max_concurrency=max_concurrency
         self._input_q = queue.Queue(max_concurrency)
         self._output_q = queue.Queue(max_concurrency)
         self._on = True
@@ -113,17 +116,25 @@ class KerasPilot(ABC):
 
     def update(self):
         logger.debug("Starting Autopilot main thread...")
-        while self._on:
-            try:
-                next_input = self._input_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
-            except queue.Empty:
-                continue
-            norm_arr = normalize_image(next_input[0])
-            output = self.inference(norm_arr, next_input[1])
-            try:
-                self._output_q.put(output, block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
-            except queue.Full:
-                pass
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self._max_concurrency) as executor:
+            futures = []
+
+            while self._on:
+
+                try:
+                    next_input = self._input_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+                except queue.Empty:
+                    continue
+
+                # Run inference in worker thread
+                futures.append(executor.submit(self.run, next_input[0], next_input[1]))
+
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        self._output_q.put(future.result(), block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+                    except queue.Full:
+                        pass
 
     def shutdown(self):
         # indicate that the thread should be stopped
