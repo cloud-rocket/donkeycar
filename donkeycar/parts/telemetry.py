@@ -11,6 +11,7 @@ import queue
 import time
 import json
 import logging
+import numpy as np
 from logging import StreamHandler
 from paho.mqtt.client import Client as MQTTClient
 
@@ -107,19 +108,36 @@ class MqttTelemetry(StreamHandler):
             packet = [{'ts': k, 'values': v} for k, v in packet.items()]
             payload = json.dumps(packet)
 
-            self._mqtt_client.publish(self._topic, payload)
+            try:
+                self._mqtt_client.publish(self._topic, payload)
+            except:
+                logger.error('Error publishing topic "{}"'.format(topic))
             # print(f'Total updates - {self._total_updates} (payload size={len(payload)})')
         else:
             # Publish only the last timestamp for per step metrics
             last_sample = packet[list(packet)[-1]]
             for k, v in last_sample.items():
                 if k in self._step_inputs:
-                    self._mqtt_client.publish('{}/{}'.format(self._topic, k), v)
+                    topic = '{}/{}'.format(self._topic, k)
+                    
+                    try:
+                        # Remove unsupported numpy types
+                        if isinstance(v, np.generic):
+                            v =  np.asscalar(v)
+
+                        self._mqtt_client.publish('{}/{}'.format(self._topic, k), v)
+                    except TypeError:
+                        logger.error('Cannot publish topic "{}" with value of type {}'.format(topic, type(v)))
+                    except:
+                        logger.error('Error publishing topic "{}"'.format(topic))
                     
             # Publish all logs
             for tm, sample in packet.items():
                 if LOG_MQTT_KEY in sample:
-                    self._mqtt_client.publish('{}/{}'.format(self._topic, LOG_MQTT_KEY), sample[LOG_MQTT_KEY])
+                    try:
+                        self._mqtt_client.publish('{}/{}'.format(self._topic, LOG_MQTT_KEY), sample[LOG_MQTT_KEY])
+                    except:
+                        logger.error('Error publishing log "{}"'.format(topic))
             # print(f'Total updates - {self._total_updates} (values ={len(last_sample)})')
 
         self._total_updates += 1
@@ -131,7 +149,7 @@ class MqttTelemetry(StreamHandler):
         pairs them with their inputs keys and saves them to disk.
         """
         assert len(self._step_inputs) == len(args)
-
+        
         # Add to queue
         record = dict(zip(self._step_inputs, args))
         self.report(record)

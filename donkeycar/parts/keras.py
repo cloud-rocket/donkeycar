@@ -8,6 +8,7 @@ include one or more models to help direct the vehicles motion.
 
 """
 
+import time
 import queue
 import logging
 from abc import ABC, abstractmethod
@@ -34,7 +35,7 @@ from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
 logger = logging.getLogger(__name__)
 
 ONE_BYTE_SCALE = 1.0 / 255.0
-MULTITHREADED_QUEUE_TIMEOUT = 0.3
+MULTITHREADED_QUEUE_TIMEOUT = 1
 
 # type of x
 XY = Union[float, np.ndarray, Tuple[float, ...], Tuple[np.ndarray, ...]]
@@ -106,12 +107,15 @@ class KerasPilot(ABC):
             self._input_q.put((img_arr, other_arr), block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
         except queue.Full:
             logger.warn('input queue full - probably FPS too high')
+            pass
 
         try:
-            self._last_output = self._output_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+            self._last_output = self._output_q.get(block=False, timeout=MULTITHREADED_QUEUE_TIMEOUT)
+            print("4")
             return self._last_output
         except queue.Empty:
             # If nothing to return - return the last result again
+            print("3")
             return self._last_output
 
     def update(self):
@@ -125,6 +129,7 @@ class KerasPilot(ABC):
                 try:
                     next_input = self._input_q.get(block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
                 except queue.Empty:
+                    print("1")
                     continue
 
                 # Run inference in worker thread
@@ -134,6 +139,7 @@ class KerasPilot(ABC):
                     try:
                         self._output_q.put(future.result(), block=True, timeout=MULTITHREADED_QUEUE_TIMEOUT)
                     except queue.Full:
+                        print("2")
                         pass
 
     def shutdown(self):
